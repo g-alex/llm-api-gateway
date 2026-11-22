@@ -25,7 +25,7 @@ flowchart LR
 
 - **Three wire protocols, one gateway** — `/v1/chat/completions` (OpenAI), `/v1/messages` (Anthropic, including streamed `content_block` events), `/v1/responses` (OpenAI Responses API for Codex CLI).
 - **Streaming everywhere** — server-sent events with a stateful parser that handles upstream `edit_content` rewrites, `<details>` reasoning blocks and UTF-16 edit indices.
-- **Account pool with failover** — one JWT per line; accounts are validated at startup, dead ones are skipped, mid-session `401`/`USER_BLOCKED` rotates to the next account and retries. Guest session as the last-resort fallback.
+- **Account pool with health validation and automatic rotation** — one JWT per line; accounts are validated at startup, invalid or expired ones are skipped, and failed sessions rotate to the next account automatically. Guest session as the last-resort fallback.
 - **Tool calling without native support** — a strict prompt contract plus a multi-strategy output parser and a streaming interceptor turn plain text into OpenAI-style `tool_calls` deltas (with malformed-JSON salvage).
 - **Vision input** — image parts (http(s) URLs and `data:` URLs) are uploaded to the upstream file endpoint and referenced as attachments (requires a logged-in token).
 - **Embedded dashboard** — live status, session info and quickstart snippets at `/`.
@@ -60,7 +60,7 @@ All settings come from environment variables and an optional `.env` file (real e
 | Variable | Default | Description |
 |---|---|---|
 | `AUTH_TOKEN` | — (**required**) | Bearer token API clients must send. The server refuses to start without it. |
-| `ZAI_TOKEN` | *(empty)* | Z.AI JWT (chat.z.ai → DevTools → Local Storage → `token`). Empty → guest session (limited model set, no image input). |
+| `ZAI_TOKEN` | *(empty)* | Z.AI session token (JWT). Empty → guest session (limited model set, no image input). |
 | `PORT` / `HOST` | `5082` / `0.0.0.0` | Listen address. |
 | `LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error`. |
 | `USE_ACCOUNT_POOL` | `false` | Enable the account pool from `ZAI_TOKENS_FILE`. |

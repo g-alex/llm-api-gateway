@@ -1,14 +1,14 @@
-// pool.go — Z.AI account pool: a token file with one JWT per line.
+// pool.go — account pool: a token file with one JWT per line.
 //
-// Policy: a single ZAI_TOKEN may die mid-life (platform ban USER_BLOCKED,
-// 401 expiry), killing every chat. With a pool, the gateway picks the
-// next healthy account instead:
+// Policy: a single ZAI_TOKEN may become invalid mid-life (revocation or
+// expiry), killing every chat. With a pool, the gateway picks the next
+// healthy account instead:
 //   - at session init: candidates are validated against GET /api/v1/auths/.
-//     Definitively dead ones (401/403/410) are skipped; the first alive
+//     Definitively invalid ones (401/403/410) are skipped; the first alive
 //     one wins.
-//   - if EVERY provided token dies, init falls back to the guest flow so
-//     the service keeps working (limited model set) rather than refusing.
-//   - mid-session 401/USER_BLOCKED chat errors rotate to the next account
+//   - if EVERY provided token is invalid, init falls back to the guest flow
+//     so the service keeps working (limited model set) rather than refusing.
+//   - mid-session auth failures rotate to the next account
 //     (see Client.Send's unauthorized branch).
 package zai
 
