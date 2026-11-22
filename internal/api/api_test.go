@@ -6,6 +6,7 @@ package api
 import (
 	"bufio"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -74,7 +75,7 @@ func newFakeUpstream(t *testing.T) *fakeUpstream {
 	})
 
 	f.Server = httptest.NewServer(mux)
-	t.Cleanup(f.Server.Close)
+	t.Cleanup(f.Close)
 	return f
 }
 
@@ -404,5 +405,183 @@ func TestChatCompletionRejectsMalformedJSON(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", resp.StatusCode)
+	}
+}
+
+// ── Anthropic streaming wire shape ──
+
+func TestAnthropicMessagesStream(t *testing.T) {
+	f := newFakeUpstream(t)
+	ts := newTestGateway(t, f, nil)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"model":      "glm-4.7",
+		"max_tokens": 1024,
+		"stream":     true,
+		"messages":   []map[string]string{{"role": "user", "content": "hi"}},
+	})
+	resp := postAuth(t, ts, "/v1/messages", string(body))
+	defer resp.Body.Close()
+
+	var text strings.Builder
+	sawMessageStop := false
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		var ev struct {
+			Type  string `json:"type"`
+			Delta struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"delta"`
+		}
+		if err := json.Unmarshal([]byte(line[6:]), &ev); err != nil {
+			continue
+		}
+		switch ev.Type {
+		case "content_block_delta":
+			if ev.Delta.Type == "text_delta" {
+				text.WriteString(ev.Delta.Text)
+			}
+		case "message_stop":
+			sawMessageStop = true
+		case "error":
+			t.Fatalf("stream error event: %s", line)
+		}
+	}
+	if !sawMessageStop {
+		t.Fatal("stream did not end with message_stop")
+	}
+	if text.String() != "Hello world" {
+		t.Fatalf("streamed text = %q, want %q", text.String(), "Hello world")
+	}
+}
+
+// ── Responses API endpoint ──
+
+func TestResponsesEndpointNonStream(t *testing.T) {
+	f := newFakeUpstream(t)
+	ts := newTestGateway(t, f, nil)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"model": "glm-4.7",
+		"input": []map[string]interface{}{
+			{"type": "message", "role": "user", "content": []map[string]interface{}{
+				{"type": "input_text", "text": "hi"},
+			}},
+		},
+	})
+	resp := postAuth(t, ts, "/v1/responses", string(body))
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+
+	raw, _ := io.ReadAll(resp.Body)
+	var out struct {
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatalf("response JSON: %v (%s)", err, raw)
+	}
+	found := false
+	for _, item := range out.Output {
+		for _, part := range item.Content {
+			if part.Type == "output_text" && strings.Contains(part.Text, "Hello world") {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("no output_text with expected content: %s", raw)
+	}
+}
+
+// ── Tools end-to-end ──
+
+// toolBlockStream builds an SSE line whose delta_content carries a
+// complete <<<TOOL_CALL>>> block (assembled via json.Marshal to keep the
+// JSON escaping unambiguous).
+func toolBlockStream(t *testing.T) string {
+	t.Helper()
+	block := "<<<TOOL_CALL>>>\n" +
+		`{"name":"get_weather","arguments":{"city":"Berlin"}}` +
+		"\n<<<END_TOOL_CALL>>>"
+	payload, err := json.Marshal(map[string]interface{}{
+		"data": map[string]interface{}{"delta_content": block},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return "data: " + string(payload) + "\n"
+}
+
+// The upstream emits a <<<TOOL_CALL>>> block; the gateway must parse it
+// into OpenAI tool_calls (non-streaming path).
+func TestToolsEndToEndNonStream(t *testing.T) {
+	f := newFakeUpstream(t)
+	f.streamBody = toolBlockStream(t) +
+		"data: {\"data\":{\"phase\":\"done\"}}\n\n"
+	ts := newTestGateway(t, f, nil)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"model":    "glm-4.7",
+		"stream":   false,
+		"messages": []map[string]string{{"role": "user", "content": "weather in Berlin?"}},
+		"tools": []map[string]interface{}{{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name": "get_weather",
+				"parameters": map[string]interface{}{
+					"type":       "object",
+					"properties": map[string]interface{}{"city": map[string]string{"type": "string"}},
+					"required":   []string{"city"},
+				},
+			},
+		}},
+	})
+	resp := postAuth(t, ts, "/v1/chat/completions", string(body))
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+
+	var out struct {
+		Choices []struct {
+			FinishReason string `json:"finish_reason"`
+			Message      struct {
+				ToolCalls []struct {
+					Type     string `json:"type"`
+					Function struct {
+						Name      string `json:"name"`
+						Arguments string `json:"arguments"`
+					} `json:"function"`
+				} `json:"tool_calls"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Choices) != 1 || out.Choices[0].FinishReason != "tool_calls" {
+		t.Fatalf("finish_reason wrong: %+v", out)
+	}
+	calls := out.Choices[0].Message.ToolCalls
+	if len(calls) != 1 || calls[0].Function.Name != "get_weather" {
+		t.Fatalf("tool_calls wrong: %+v", calls)
+	}
+	var args map[string]interface{}
+	json.Unmarshal([]byte(calls[0].Function.Arguments), &args)
+	if args["city"] != "Berlin" {
+		t.Fatalf("arguments wrong: %v", args)
 	}
 }

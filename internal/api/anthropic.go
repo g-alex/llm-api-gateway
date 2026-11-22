@@ -692,7 +692,7 @@ func (s *Server) handleAnthropicStream(w http.ResponseWriter, r *http.Request, p
 
 	msgID := fmt.Sprintf("msg_%s", requestID)
 	writeSSE("message_start", fmt.Sprintf(`{"type":"message_start","message":{"id":%q,"type":"message","role":"assistant","model":%q,"content":[]}}`, msgID, model))
-	writeSSE("content_block_start", fmt.Sprintf(`{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}`))
+	writeSSE("content_block_start", `{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}`)
 	writeSSE("ping", `{"type":"ping"}`)
 
 	ctx, cancel := context.WithTimeout(r.Context(), s.cfg.Timeout)
@@ -821,7 +821,7 @@ func convertAnthropicToolMessages(messages, tools []json.RawMessage) []json.RawM
 						if fn, ok := c["function"].(map[string]interface{}); ok {
 							name, _ := fn["name"].(string)
 							args, _ := fn["arguments"].(string)
-							sb.WriteString(fmt.Sprintf("{\"name\":\"%s\",\"arguments\":%s}\n", name, args))
+							fmt.Fprintf(&sb, "{\"name\":\"%s\",\"arguments\":%s}\n", name, args)
 						}
 					}
 				}

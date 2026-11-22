@@ -499,7 +499,7 @@ func (s *Session) generateSignature(prompt, token, userID string) string {
 
 	// wKey = HMAC-SHA256(saltKey, bucket) hex
 	mac := hmac.New(sha256.New, []byte(saltKey))
-	mac.Write([]byte(fmt.Sprintf("%d", bucket)))
+	fmt.Fprintf(mac, "%d", bucket)
 	wKey := hex.EncodeToString(mac.Sum(nil))
 
 	// sorted payload: requestId,timestamp,user_id

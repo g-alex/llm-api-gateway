@@ -464,7 +464,6 @@ func (c *Client) doRequest(ctx context.Context, prompt string, req Request, onCo
 					if ferr == io.EOF {
 						// [DONE] / phase done — normal end; release any
 						// holdback-tail content before returning finals
-						sawDone = true
 						parser.FlushFinal(clientContent, clientReasoning)
 						return parser.Content(), parser.Reasoning(), nil
 					}

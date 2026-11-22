@@ -95,7 +95,7 @@ func TestDetailsUnclosed(t *testing.T) {
 	}
 
 	// Closing the tag releases the content
-	content, reasoning, err = feedAll(p, []string{deltaLine("</details>Done")})
+	content, _, err = feedAll(p, []string{deltaLine("</details>Done")})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -78,7 +78,7 @@ func ConvertMessages(messages []json.RawMessage, tools []json.RawMessage) []json
 						if fn, ok := c["function"].(map[string]interface{}); ok {
 							name, _ := fn["name"].(string)
 							args, _ := fn["arguments"].(string)
-							sb.WriteString(fmt.Sprintf("{\"name\":\"%s\",\"arguments\":%s}\n", name, args))
+							fmt.Fprintf(&sb, "{\"name\":\"%s\",\"arguments\":%s}\n", name, args)
 						}
 					}
 				}

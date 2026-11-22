@@ -76,10 +76,10 @@ func buildCompactToolList(tools []json.RawMessage) string {
 		if err := json.Unmarshal(raw, &tool); err != nil {
 			continue
 		}
-		sb.WriteString(fmt.Sprintf("- %s", tool.Function.Name))
+		fmt.Fprintf(&sb, "- %s", tool.Function.Name)
 		if tool.Function.Parameters != nil {
 			if sig := extractParamSignature(tool.Function.Parameters); sig != "" {
-				sb.WriteString(fmt.Sprintf("(%s)", sig))
+				fmt.Fprintf(&sb, "(%s)", sig)
 			}
 		}
 		if tool.Function.Description != "" {
@@ -87,7 +87,7 @@ func buildCompactToolList(tools []json.RawMessage) string {
 			if len(desc) > 80 {
 				desc = desc[:80] + "..."
 			}
-			sb.WriteString(fmt.Sprintf(" — %s", desc))
+			fmt.Fprintf(&sb, " — %s", desc)
 		}
 		sb.WriteString("\n")
 	}
