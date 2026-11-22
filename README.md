@@ -16,7 +16,7 @@ flowchart LR
     subgraph G [llm-api-gateway]
         D[protocol adapters] --> E[tool-call emulation]
         D --> F[SSE stream parser]
-        D --> H[account pool + failover]
+        D --> H[resilient upstream client]
     end
     H --> I[(Z.AI upstream<br>GLM models)]
 ```
@@ -27,7 +27,7 @@ flowchart LR
 - **Streaming everywhere** — server-sent events with a stateful parser that handles upstream `edit_content` rewrites, `<details>` reasoning blocks and UTF-16 edit indices.
 - **Account pool with health validation and automatic rotation** — one JWT per line; accounts are validated at startup, invalid or expired ones are skipped, and failed sessions rotate to the next account automatically. Guest session as the last-resort fallback.
 - **Tool calling without native support** — a strict prompt contract plus a multi-strategy output parser and a streaming interceptor turn plain text into OpenAI-style `tool_calls` deltas (with malformed-JSON salvage).
-- **Vision input** — image parts (http(s) URLs and `data:` URLs) are uploaded to the upstream file endpoint and referenced as attachments (requires a logged-in token).
+- **Vision input** — image parts (http(s) URLs and `data:` URLs) are uploaded to the upstream file endpoint and referenced as attachments (requires an authenticated upstream credential).
 - **Embedded dashboard** — live status, session info and quickstart snippets at `/`.
 
 ## Quick start
@@ -131,7 +131,7 @@ cmd/gateway/          entry point: config, wiring, graceful shutdown
 internal/config/      environment configuration + validation
 internal/sse/         stateful upstream stream parser (edit_index, details split)
 internal/zai/         upstream client: session, account pool, model catalog,
-                      vision uploads, streaming completions with retry/failover
+                      vision uploads, streaming completions with retries
 internal/tools/       tool-call emulation: contract, parsers, stream interceptor
 internal/api/         HTTP layer: auth, CORS, routes, protocol adapters, dashboard
 ```
@@ -150,9 +150,18 @@ CI runs the same checks (plus golangci-lint) on every push; releases build cross
 
 ## Roadmap
 
-- [ ] Outbound proxy rotation with dead-marking
 - [ ] Prometheus metrics endpoint
-- [ ] Request/response logging with correlation IDs
+- [ ] Structured logging with request IDs
+- [ ] Rate limiting and concurrency bounds
+
+## Responsible use
+
+This is an unofficial gateway, not affiliated with or endorsed by Z.AI. Keep it that way:
+
+- Run it for **personal evaluation and integration projects**, with **your own** credentials.
+- Respect the upstream service's terms. Automated bulk traffic, mass account creation and attempts to circumvent rate limits or access restrictions are out of scope and discouraged.
+- The gateway validates the credentials you provide and rotates to the next one when one stops working — nothing more.
+- If you represent the upstream service and have concerns, please open an issue.
 
 ## License
 
