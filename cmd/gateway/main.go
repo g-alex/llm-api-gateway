@@ -18,7 +18,8 @@ import (
 	"github.com/g-alex/llm-api-gateway/internal/zai"
 )
 
-const version = "1.0.0"
+// version is set at build time via -ldflags "-X main.version=…".
+var version = "dev"
 
 func main() {
 	var tokensFile string
@@ -90,6 +91,6 @@ func printBanner(cfg *config.Config) {
 	}
 	fmt.Println()
 	fmt.Println(cyan + "  llm-api-gateway — multi-protocol LLM gateway" + reset)
-	fmt.Println(green + "  mode:" + reset + " " + mode + cyan + "  claude-desktop:" + reset + " " + fmt.Sprint(cfg.ClaudeDesktop))
+	fmt.Println(green + "  mode:" + reset + " " + mode + cyan + "  claude-desktop:" + reset + " " + fmt.Sprint(cfg.ClaudeDesktop) + cyan + "  version:" + reset + " " + version)
 	fmt.Println()
 }
