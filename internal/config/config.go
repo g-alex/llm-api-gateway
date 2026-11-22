@@ -26,6 +26,7 @@ type Config struct {
 	Timeout        time.Duration
 	ClaudeDesktop  bool // expose claude-* aliases on /v1/models and /v1/messages
 	AnthropicMinMS int  // min gap between upstream sends for /v1/messages
+	PersistHistory bool // append request/response turns to the conversation store
 }
 
 // validLogLevels lists accepted LOG_LEVEL values.
@@ -48,6 +49,7 @@ func Load() (*Config, error) {
 		Timeout:        time.Duration(envIntOr("TIMEOUT", 300000)) * time.Millisecond,
 		ClaudeDesktop:  envOr("CLAUDE_DESKTOP", "") == "true",
 		AnthropicMinMS: envIntOr("ANTHROPIC_ZAI_MIN_MS", 1500),
+		PersistHistory: envOr("PERSIST_HISTORY", "") == "true",
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err

@@ -12,7 +12,10 @@ import (
 	"strings"
 )
 
-const agentToolCallStart = "<<<TOOL_CALL>>>"
+// MarkerStart is the literal start marker of a streamed tool-call block.
+const MarkerStart = "<<<TOOL_CALL>>>"
+
+const agentToolCallStart = MarkerStart
 const agentToolCallEnd = "<<<END_TOOL_CALL>>>"
 
 // Models corrupt the end marker now and then ("<<<END_TOOL_CALL   >>>"),

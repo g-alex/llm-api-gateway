@@ -467,6 +467,13 @@ func (s *Session) IsInitialized() bool {
 	return s.initialized
 }
 
+// IsConnected reports whether a session token is present.
+func (s *Session) IsConnected() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.token != ""
+}
+
 // MarkUninitialized forces re-initialization on the next send (used after
 // mid-session 401s).
 func (s *Session) MarkUninitialized() {

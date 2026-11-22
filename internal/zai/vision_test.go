@@ -116,7 +116,7 @@ func TestGetMessageContentExtractsTextOnly(t *testing.T) {
 	multipart := json.RawMessage(`{"role":"user","content":[` +
 		`{"type":"text","text":"What animal is this?"},` +
 		`{"type":"image_url","image_url":{"url":"https://example.com/cat.png"}}]}`)
-	if messagesToPrompt([]json.RawMessage{multipart}) != "What animal is this?" {
-		t.Errorf("messagesToPrompt flattening broken: %q", messagesToPrompt([]json.RawMessage{multipart}))
+	if MessagesToPrompt([]json.RawMessage{multipart}) != "What animal is this?" {
+		t.Errorf("messagesToPrompt flattening broken: %q", MessagesToPrompt([]json.RawMessage{multipart}))
 	}
 }

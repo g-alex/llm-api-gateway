@@ -151,10 +151,10 @@ func GetMessageContent(raw json.RawMessage) string {
 	return ""
 }
 
-// messagesToPrompt flattens a messages array → prompt string. Used ONLY
+// MessagesToPrompt flattens a messages array → prompt string. Used ONLY
 // for signature_prompt computation (HMAC signing). The actual messages
 // array is forwarded as-is to the upstream.
-func messagesToPrompt(messages []json.RawMessage) string {
+func MessagesToPrompt(messages []json.RawMessage) string {
 	var sb strings.Builder
 	for _, raw := range messages {
 		var msg struct {

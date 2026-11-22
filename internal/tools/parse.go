@@ -510,3 +510,17 @@ func stripNakedToolJSON(content string) string {
 	}
 	return strings.TrimSpace(content[:first] + content[last+1:])
 }
+
+// Contract is the exported tool-call contract text (used by adapters
+// that embed framing into their own message shapes).
+const Contract = toolCallContract
+
+// BuildCompactToolList renders the compact function signature list.
+func BuildCompactToolList(tools []json.RawMessage) string {
+	return buildCompactToolList(tools)
+}
+
+// BuildSchemaMap indexes tool definitions by name → JSON-Schema params.
+func BuildSchemaMap(tools []json.RawMessage) map[string]map[string]interface{} {
+	return buildSchemaMap(tools)
+}
