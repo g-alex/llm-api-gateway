@@ -88,20 +88,15 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"name":    "llm-api-gateway",
-		"version": "1.0.0",
-		"endpoints": []string{
-			"/status",
-			"/v1/models",
-			"/v1/chat/completions",
-			"/v1/messages",
-			"/v1/responses",
-			"/admin/health",
-			"/admin/stats",
-		},
-	})
+	host := r.Host
+	if host == "" {
+		host = "localhost:" + s.cfg.Port
+	}
+	html := dashboardHTML
+	html = strings.ReplaceAll(html, "__HOST__", host)
+	html = strings.ReplaceAll(html, "__AUTH_TOKEN__", s.cfg.AuthToken)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
