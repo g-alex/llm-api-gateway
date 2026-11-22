@@ -1,0 +1,33 @@
+# Environment & secrets
+.env
+.env.local
+zai_tokens.txt
+
+# Local data
+tokens.sqlite
+tokens.sqlite-*
+*.log
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+build/
+dist/
+
+# Go workspace
+go.work
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Legacy donor code (pre-refactor, out of build)
+.legacy/
